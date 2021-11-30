@@ -19,11 +19,9 @@ I.cols<-c("B cell", "NK cell", "Langerhans cell", "HLAABCpMelanoma", "HLAABCnMel
           "Langerin (Opal 650) Positive Classification",	"Langerin (Opal 650) Positive Cytoplasm Classification",	"Langerin (Opal 650) Cytoplasm Intensity",	"Langerin (Opal 650) Cell Intensity")
 
 for (i in all.files){
-  check<- str_detect(i, "Immune")
-  print(check)
-  check<-str_replace(check,pattern="TRUE", replacement="1")
-  print(check)
-  if (check == 1){
+  checkti<- str_detect(i, "Immune")
+  print(checkti)
+  if (checkti == TRUE){
     newdat<-str_replace(i,pattern=".csv", replacement="_combitable.csv")
     print(paste0("Formatting", i))
     tableIp<-fread(i,data.table=F)
