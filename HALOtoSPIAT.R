@@ -1,7 +1,6 @@
 library(stringr)
 library(data.table)
 
-#NOTE - rename T cell files replacing "T cell" with "aT cell" - so they come first in alphabetical order
 #27212 has CD39 nucleus intensity & classification column - delete
 all.files<-list.files(path="/Users/gracie/Desktop/R Projects/SPIATprimary/Files/T cellxyimmuneHALO", pattern=".csv", full.names=T, recursive=T, include.dirs=T)
 
@@ -20,12 +19,48 @@ I.cols<-c("B cell", "NK cell", "Langerhans cell", "HLAABCpMelanoma", "HLAABCnMel
           "Langerin (Opal 650) Positive Classification",	"Langerin (Opal 650) Positive Cytoplasm Classification",	"Langerin (Opal 650) Cytoplasm Intensity",	"Langerin (Opal 650) Cell Intensity")
 
 for (i in all.files){
-  check<- str_detect(i, "aT cell")
+  check<- str_detect(i, "Immune")
   print(check)
   check<-str_replace(check,pattern="TRUE", replacement="1")
   print(check)
   if (check == 1){
     newdat<-str_replace(i,pattern=".csv", replacement="_combitable.csv")
+    print(paste0("Formatting", i))
+    tableIp<-fread(i,data.table=F)
+    #get rid of XMin XMax YMin YMax, (& Analysis Region & Layer - T & I exported from different HALO versions)
+    tableIp<- subset(tableIp, select = -c(2:3,9:12))
+    #rename XY columns, HLA-ABC (& title - different HALO versions)
+    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Immune Registered XMin",replacement="XMin")
+    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Immune Registered XMax",replacement="XMax")
+    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Immune Registered YMin",replacement="YMin")
+    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Immune Registered YMax",replacement="YMax")
+    colnames(tableIp)<-str_replace(colnames(tableIp), pattern="HLA-ABC\\+ Melanoma", replacement="HLAABCpMelanoma")
+    colnames(tableIp)<-str_replace(colnames(tableIp), pattern="HLA-ABC- Melanoma", replacement="HLAABCnMelanoma")
+    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Image Location",replacement="Image File Name")
+    
+    #add xy columns to tableI
+    tableI<-tableIp[,1:6]
+    #add T cell phenotype columns to tableI
+    out2<-matrix(0,nrow=(nrow(tableI)),ncol=10)
+    colnames(out2)<-c(T.colsp)
+    tableI<-cbind(tableI,out2)
+    #Add melanoma column to tableI
+    tableI$Melanoma<-tableIp[,"Melanoma"]
+    #add T cell marker columns
+    out3<-matrix(0,nrow=(nrow(tableI)),ncol=20)
+    colnames(out3)<-c(T.colsm)
+    tableI<-cbind(tableI,out3)
+    #add SOX10,DAPI & cell parameters
+    tableI<-cbind(tableI,tableIp[,33:46])
+    #add rest of Immune columns to tableI
+    tableI<-cbind(tableI, tableIp[,c(7:9, 11:32)])
+    
+    #Replace (um2)  
+    colnames(tableI)<-str_replace_all(colnames(tableI),pattern="\\(µm²\\)",replacement="")
+    colnames(tableI)<-str_replace_all(colnames(tableI),pattern="\\(µm\\)",replacement="")
+  }
+    
+  else{
     print(paste0("Formatting", i))
     print("replace")
     tableT<-fread(i,data.table=F)
@@ -57,43 +92,8 @@ for (i in all.files){
     colnames(tableT)<-str_replace_all(colnames(tableT),pattern="\\(µm\\)",replacement="")
     #Set max T cell object Id +1 as minimum object Id for Immune panel
     objectidn<-max(tableT$`Object Id`)+1
-  }
-  else{
-    print(paste0("Formatting", i))
-    tableIp<-fread(i,data.table=F)
-    #get rid of XMin XMax YMin YMax, (& Analysis Region & Layer - T & I exported from different HALO versions)
-    tableIp<- subset(tableIp, select = -c(2:3,9:12))
-    #rename XY columns, HLA-ABC (& title - different HALO versions)
-    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Immune Registered XMin",replacement="XMin")
-    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Immune Registered XMax",replacement="XMax")
-    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Immune Registered YMin",replacement="YMin")
-    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Immune Registered YMax",replacement="YMax")
-    colnames(tableIp)<-str_replace(colnames(tableIp), pattern="HLA-ABC\\+ Melanoma", replacement="HLAABCpMelanoma")
-    colnames(tableIp)<-str_replace(colnames(tableIp), pattern="HLA-ABC- Melanoma", replacement="HLAABCnMelanoma")
-    colnames(tableIp)<-str_replace(colnames(tableIp),pattern="Image Location",replacement="Image File Name")
-    
-    #add xy columns to tableI
-    tableI<-tableIp[,1:6]
-    #add T cell phenotype columns to tableI
-    out2<-matrix(0,nrow=(nrow(tableI)),ncol=10)
-    colnames(out2)<-c(T.colsp)
-    tableI<-cbind(tableI,out2)
-    #Add melanoma column to tableI
-    tableI$Melanoma<-tableIp[,"Melanoma"]
-    #add T cell marker columns
-    out3<-matrix(0,nrow=(nrow(tableI)),ncol=20)
-    colnames(out3)<-c(T.colsm)
-    tableI<-cbind(tableI,out3)
-    #add SOX10,DAPI & cell parameters
-    tableI<-cbind(tableI,tableIp[,33:46])
-    #add rest of Immune columns to tableI
-    tableI<-cbind(tableI, tableIp[,c(7:9, 11:32)])
     #Add object ID number to immune cells
     tableI$`Object Id`<-tableI$`Object Id` + objectidn
-    
-    #Replace (um2)  
-    colnames(tableI)<-str_replace_all(colnames(tableI),pattern="\\(µm²\\)",replacement="")
-    colnames(tableI)<-str_replace_all(colnames(tableI),pattern="\\(µm\\)",replacement="")
     
     combitable<-rbind(tableT,tableI)
     print(dim(combitable))
